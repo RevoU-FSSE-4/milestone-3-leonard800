@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from connector.mysql_connector import connection
 from models.account import Account
-from sqlalchemy import select
+from sqlalchemy import select  
 from sqlalchemy.orm import sessionmaker
 from flask_login import login_required, current_user
 from flask_jwt_extended import jwt_required
@@ -10,6 +10,7 @@ account_routes = Blueprint("account_routes", __name__)
 
 @account_routes.route('/account', methods=['POST'])
 @jwt_required()
+@login_required
 def create_account():
     Session = sessionmaker(connection)
     s = Session()
@@ -21,8 +22,6 @@ def create_account():
             account_number=request.form['account_number'],
             balance=request.form['balance']
         )
-
-        print(new_account)
 
         s.add(new_account)
         s.commit()
@@ -36,23 +35,26 @@ def create_account():
 
 @account_routes.route('/account', methods=['GET'])
 @jwt_required()
+@login_required
 def account_list():
     Session = sessionmaker(connection)
     s = Session()
 
     try:
-        accounts = current_user.accounts
-
+        account_query = select(Account).where(Account.user_id == current_user.id)
+        
+        result = s.execute(account_query)
         account_list = []
-        for account in accounts:
+
+        for row in result.scalars():
             account_list.append({
-                "id": account.id,
-                "user_id": account.user_id,
-                "account_type": account.account_type,
-                "account_number": account.account_number,
-                "balance": account.balance,
-                "created_at": account.created_at,
-                "updated_at": account.updated_at
+                "id": row.id,
+                "user_id": row.user_id,
+                "account_type": row.account_type,
+                "account_number": row.account_number,
+                "balance": row.balance,
+                "created_at": row.created_at,
+                "updated_at": row.updated_at
             })
 
         return {
@@ -68,6 +70,7 @@ def account_list():
 
 @account_routes.route('/account/<id>', methods=['GET'])
 @jwt_required()
+@login_required
 def get_account(id):
     Session = sessionmaker(connection)
     s = Session()
@@ -96,6 +99,7 @@ def get_account(id):
 
 @account_routes.route('/account/<id>', methods=['PUT'])
 @jwt_required()
+@login_required
 def update_account(id):
     Session = sessionmaker(connection)
     s = Session()
@@ -125,6 +129,7 @@ def update_account(id):
 
 @account_routes.route('/account/<id>', methods=['DELETE'])
 @jwt_required()
+@login_required
 def account_delete(id):
     Session = sessionmaker(connection)
     s = Session()

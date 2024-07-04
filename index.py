@@ -5,6 +5,7 @@ from flask_login import LoginManager
 from connector.mysql_connector import connection
 from controllers.user import user_routes
 from controllers.account import account_routes
+from controllers.transaction import transaction_routes
 from flask_login import LoginManager
 from flask_jwt_extended import JWTManager
 from models.user import User
@@ -17,7 +18,7 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 app.register_blueprint(user_routes)
 app.register_blueprint(account_routes)
-
+app.register_blueprint(transaction_routes)
 
 jwt = JWTManager(app)
 
