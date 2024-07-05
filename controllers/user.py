@@ -25,11 +25,11 @@ def register_user():
 
         s.add(NewUser)
         s.commit()
-        return { "message": "Registration success" }, 200 
+        return {"message": "Registration success"}, 200
     except Exception as e:
         s.rollback()
         print(e)
-        return { "message": "Registration failed"}, 500
+        return {"message": "Registration failed"}, 500
 
 @user_routes.route('/login', methods=['POST'])
 def check_login():
@@ -43,14 +43,14 @@ def check_login():
         user = s.query(User).filter(User.email == email).first()
 
         if user is None:
-            return { "message": "User not found" }, 403
+            return {"message": "User not found"}, 403
         
         if not user.check_password(password):
-            return { "message": "Invalid password" }, 403
+            return {"message": "Invalid password"}, 403
         
         login_user(user)
 
-        session_id = secrets.token_hex(16)  
+        session_id = secrets.token_hex(16)  # Generate a random session ID
         return {
             "session_id": session_id,
             "message": "You are now logged in"
@@ -58,7 +58,7 @@ def check_login():
 
     except Exception as e:
         s.rollback()
-        return { "message": "Failed to log in, please try again" }, 500
+        return {"message": "Failed to log in, please try again"}, 500
 
 @user_routes.route('/loginjwt', methods=['POST'])
 def check_login_jwt():
@@ -71,13 +71,12 @@ def check_login_jwt():
         user = s.query(User).filter(User.email == email).first()
 
         if user is None:
-            return { "message": "User not found" }, 403
+            return {"message": "User not found"}, 403
         
         if not user.check_password(password):
-            return { "message": "Invalid password" }, 403
+            return {"message": "Invalid password"}, 403
         
-        access_token = create_access_token(identity=user.id, additional_claims={"token_type": "randomized"}, 
-                                          secret=secrets.token_hex(16))
+        access_token = create_access_token(identity=user.id, additional_claims={"token_type": "randomized"})  # Create a JWT with randomized claims
 
         return {
             "access_token": access_token,
@@ -85,26 +84,34 @@ def check_login_jwt():
         }, 200
 
     except Exception as e:
-        return { "message": "Failed to log in, please try again" }, 500
+        s.rollback()
+        print(e)
+        return {"message": "Failed to log in, please try again"}, 500
     
 @user_routes.route('/logout', methods=['GET'])
 @login_required
 def user_logout():
     logout_user()
-    return { "message": "Successfully logged out" }, 200
+    return {"message": "Successfully logged out"}, 200
 
 @user_routes.route('/user/me', methods=['GET'])
 @jwt_required()  
 def get_profile():
-    user_id = get_jwt_identity()  
-    user = {
-        "id": current_user.id,
-        "username": current_user.username,
-        "email": current_user.email,
-        "created_at": current_user.created_at,
-        "updated_at": current_user.updated_at
-    }
-    return jsonify(user), 200
+    user_id = get_jwt_identity()
+    Session = sessionmaker(connection)
+    s = Session()
+    user = s.query(User).get(user_id)
+    if user:
+        user_info = {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "created_at": user.created_at,
+            "updated_at": user.updated_at
+        }
+        return jsonify(user_info), 200
+    else:
+        return {"message": "User not found"}, 404
 
 @user_routes.route('/user/me', methods=['PUT'])
 @jwt_required()  
@@ -125,7 +132,7 @@ def update_profile():
             user.set_password(request.form['password'])
 
         s.commit()
-        return { "message": "Profile updated successfully" }, 200
+        return {"message": "Profile updated successfully"}, 200
     except Exception as e:
         s.rollback()
-        return { "message": "Profile update failed" }, 500
+        return {"message": "Profile update failed"}, 500

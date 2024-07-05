@@ -6,7 +6,6 @@ from connector.mysql_connector import connection
 from controllers.user import user_routes
 from controllers.account import account_routes
 from controllers.transaction import transaction_routes
-from flask_login import LoginManager
 from flask_jwt_extended import JWTManager
 from models.user import User
 import os
@@ -29,9 +28,7 @@ login_manager.init_app(app)
 def load_user(user_id):
     Session = sessionmaker(connection)
     s = Session()
-    return s.query(User).get(int(user_id))
+    return s.get(User, int(user_id))  
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-

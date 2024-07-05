@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 from flask_login import login_required, current_user
 from flask_jwt_extended import jwt_required, get_jwt_identity
+import logging
 
 transaction_routes = Blueprint("transaction_routes", __name__)
 
@@ -17,18 +18,20 @@ def new_transaction():
     s.begin()
 
     try:
-        data = request.get_json()
-        amount = data['amount']
-        from_account_id = data.get('from_account_id')
-        to_account_id = data.get('to_account_id')
-        transaction_type = data['type']
-        description = data['description']
+        amount = request.form.get('amount')
+        from_account_id = request.form.get('from_account_id')
+        to_account_id = request.form.get('to_account_id')
+        transaction_type = request.form.get('type')
+        description = request.form.get('description')
 
-        if transaction_type not in ['transfer', 'deposit', 'withdraw', 'topup']:
-            return { "message": "Invalid transaction type" }, 400
+        if not all(['amount', 'transaction_type', 'description']):
+            return { "message": "Missing required fields" }, 400
 
         if from_account_id:
-            from_account = s.query(Account).filter(Account.id == from_account_id, Account.user_id == current_user.id).first()
+            from_account = s.query(Account).filter(
+                Account.id == from_account_id,
+                Account.user_id == get_jwt_identity()
+            ).first()
             if not from_account:
                 return { "message": "Invalid or unauthorized from_account" }, 403
 
@@ -41,7 +44,7 @@ def new_transaction():
             amount=amount,
             from_account_id=from_account_id,
             to_account_id=to_account_id,
-            type=transaction_type,
+            transaction_type=transaction_type,
             description=description
         )
 
@@ -51,10 +54,11 @@ def new_transaction():
 
     except Exception as e:
         s.rollback()
-        print(e)
+        logging.error("Failed to create transaction: %s", str(e))
         return { "message": "Failed to create transaction" }, 500
     finally:
         s.close()
+
 
 @transaction_routes.route('/transaction', methods=['GET'])
 @jwt_required()
@@ -84,7 +88,7 @@ def list_transaction():
                 "amount": row.amount,
                 "from_account_id": row.from_account_id,
                 "to_account_id": row.to_account_id,
-                "type": row.type,
+                "transaction_type": row.transaction_type,
                 "description": row.description,
                 "created_at": row.created_at
             })
@@ -115,7 +119,7 @@ def get_transaction(id):
             "amount": transaction.amount,
             "from_account_id": transaction.from_account_id,
             "to_account_id": transaction.to_account_id,
-            "type": transaction.type,
+            "transaction_type": transaction.transaction_type,
             "description": transaction.description,
             "created_at": transaction.created_at
         }
