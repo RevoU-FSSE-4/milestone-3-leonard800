@@ -1,14 +1,18 @@
 FROM python:3.11-slim
 
-RUN mkdir /app
-WORKDIR /app
+WORKDIR /
 
-COPY . /app
+COPY Pipfile Pipfile.lock ./
 
-RUN pip install -U pipenv
+RUN pip install pipenv
 
 RUN pipenv install --deploy --ignore-pipfile
 
-EXPOSE 8080
+COPY . .
 
-CMD ["pipenv", "run", "gunicorn", "-b", "0.0.0.0:8080", "index:app"]
+EXPOSE 5000
+
+ENV FLASK_APP=index.py
+ENV FLASK_ENV=production
+
+CMD ["pipenv", "run", "flask", "run", "--host=0.0.0.0"]
